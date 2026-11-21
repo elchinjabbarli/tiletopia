@@ -12,12 +12,14 @@ const ASSETS = [
   "./assets/icon-180.png",
   "./assets/icon-192.png",
   "./assets/icon-20.png",
+  "./assets/icon-29.png",
   "./assets/icon-40.png",
   "./assets/icon-512.png",
   "./assets/icon-58.png",
   "./assets/icon-60.png",
   "./assets/icon-76.png",
   "./assets/icon-80.png",
+  "./assets/icon-83.5.png",
   "./assets/icon-87.png",
   "./assets/icon-maskable-512.png"
 ];
@@ -29,9 +31,21 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || fetch(e.request).then((res) => {
+  const url = new URL(e.request.url);
+  // serve the app shell for any navigation inside the scope, regardless of
+  // trailing slash (Pages serves /tiletopia and /tiletopia/ interchangeably)
+  if (e.request.mode === "navigate" || e.request.destination === "document") {
+    e.respondWith(
+      caches.match("./index.html").then((hit) => hit || fetch(e.request))
+    );
+    return;
+  }
+  // normalize: strip trailing slash on directory-ish requests, ignore query
+  const req = url.pathname.endsWith("/") && !url.pathname.endsWith(".html")
+    ? new Request(url.href + "index.html") : e.request;
+  e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(e.request).then((res) => {
     const copy = res.clone();
-    caches.open(CACHE).then((c) => c.put(e.request, copy));
+    caches.open(CACHE).then((c) => c.put(req, copy));
     return res;
   }).catch(() => caches.match("./index.html"))));
 });
